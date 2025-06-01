@@ -2,6 +2,7 @@ package com.example.studentmanage
 
 import android.app.Activity
 import android.content.Intent
+import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import android.view.ContextMenu
 import android.view.Menu
@@ -22,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var listStudent : ListView
     private val students = mutableListOf<Student>()
     val adapter = StudentAdapter(students)
+    lateinit var db: SQLiteDatabase
 
     private val launcher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK && it.data != null) {
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity() {
 
             students.add(Student(name, studentId, email, sdt))
             listStudent.adapter = adapter
+            db.execSQL("insert into tblStudent(id, name, phone, email) values (?, ?, ?, ?)", arrayOf(studentId, name, sdt, email))
         }
     }
     private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -49,6 +52,7 @@ class MainActivity : AppCompatActivity() {
                 adapter.notifyDataSetChanged()
                 Toast.makeText(this, "Cập nhật sinh viên thành công!", Toast.LENGTH_SHORT).show()
             }
+            db.execSQL("update tblStudent set name = ?, phone = ?, email = ? where id = ?", arrayOf(name, sdt, email))
         }
     }
 
@@ -67,7 +71,22 @@ class MainActivity : AppCompatActivity() {
         val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         registerForContextMenu(listStudent)
+
+        db = SQLiteDatabase.openDatabase(filesDir.path + "/mydb", null, SQLiteDatabase.CREATE_IF_NECESSARY)
+        createTable()
+
     }
+
+    fun createTable(){
+        try{
+            db.execSQL("create table tblStudent (" +
+            "id integer primary key autoincrement," +
+            "name text," + "phone text," +"email text)")
+        }catch(ex: Exception){
+            ex.printStackTrace()
+        }
+    }
+
 
     override fun onCreateContextMenu(menu : ContextMenu, v : View, menuInfo : ContextMenu.ContextMenuInfo){
         super.onCreateContextMenu(menu, v, menuInfo)
@@ -93,6 +112,7 @@ class MainActivity : AppCompatActivity() {
             R.id.action_delete -> {
                 val deletedStudent = students[infor.position]
                 students.removeAt(infor.position)
+                db.execSQL("delete from tblStudent where id = ?", arrayOf(deletedStudent.mssv))
                 adapter.notifyDataSetChanged()
                 Toast.makeText(this, "Đã xóa: ${deletedStudent.hoten}", Toast.LENGTH_SHORT).show()
                 true
@@ -134,5 +154,6 @@ class MainActivity : AppCompatActivity() {
             else -> super.onOptionsItemSelected(item)
         }
     }
+
 
 }
