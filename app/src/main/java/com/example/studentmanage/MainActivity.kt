@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
+import android.util.Log
 import android.view.ContextMenu
 import android.view.Menu
 import android.view.MenuInflater
@@ -18,12 +19,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     lateinit var listStudent : ListView
     private val students = mutableListOf<Student>()
     val adapter = StudentAdapter(students)
     lateinit var db: SQLiteDatabase
+    lateinit var studentDao: StudentDao
+
 
     private val launcher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK && it.data != null) {
@@ -35,7 +41,12 @@ class MainActivity : AppCompatActivity() {
 
             students.add(Student(name, studentId, email, sdt))
             listStudent.adapter = adapter
-            db.execSQL("insert into tblStudent(id, name, phone, email) values (?, ?, ?, ?)", arrayOf(studentId, name, sdt, email))
+            //db.execSQL("insert into tblStudent(id, name, phone, email) values (?, ?, ?, ?)", arrayOf(studentId, name, sdt, email))
+            lifecycleScope.launch{
+                val ret = studentDao.addStudent(sinhvien(studentId.toInt(), name, email, sdt))
+                Log.v("TAG", "Result: $ret")
+            }
+
         }
     }
     private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -52,7 +63,18 @@ class MainActivity : AppCompatActivity() {
                 adapter.notifyDataSetChanged()
                 Toast.makeText(this, "Cập nhật sinh viên thành công!", Toast.LENGTH_SHORT).show()
             }
-            db.execSQL("update tblStudent set name = ?, phone = ?, email = ? where id = ?", arrayOf(name, sdt, email))
+            //db.execSQL("update tblStudent set name = ?, phone = ?, email = ? where id = ?", arrayOf(name, sdt, email))
+
+            lifecycleScope.launch {
+                val ret = studentDao.updateStudent(
+                    studentId.toInt(),
+                    name,
+                    email,
+                    sdt
+                )
+                Log.v("TAG", "Update $ret record")
+            }
+
         }
     }
 
@@ -72,8 +94,9 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         registerForContextMenu(listStudent)
 
-        db = SQLiteDatabase.openDatabase(filesDir.path + "/mydb", null, SQLiteDatabase.CREATE_IF_NECESSARY)
-        createTable()
+        //db = SQLiteDatabase.openDatabase(filesDir.path + "/mydb", null, SQLiteDatabase.CREATE_IF_NECESSARY)
+        //createTable()
+         studentDao = StudentDatabase.getInstance(this).studentDao()
 
     }
 
@@ -112,7 +135,9 @@ class MainActivity : AppCompatActivity() {
             R.id.action_delete -> {
                 val deletedStudent = students[infor.position]
                 students.removeAt(infor.position)
-                db.execSQL("delete from tblStudent where id = ?", arrayOf(deletedStudent.mssv))
+                //db.execSQL("delete from tblStudent where id = ?", arrayOf(deletedStudent.mssv))
+//                lifecycleScope.launch { studentDao.deleteByMssv(deletedStudent.mssv.toInt())
+//                }
                 adapter.notifyDataSetChanged()
                 Toast.makeText(this, "Đã xóa: ${deletedStudent.hoten}", Toast.LENGTH_SHORT).show()
                 true
